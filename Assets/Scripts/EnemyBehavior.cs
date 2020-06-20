@@ -13,6 +13,10 @@ public class EnemyBehavior : MonoBehaviour
 
     private bool isAttacking = false;
     private bool startMoving = false;
+    private bool getCloser = false;
+    private bool stopMoving = false;
+
+    private Vector3 direction = Vector3.zero;
 
     void Awake()
     {
@@ -45,6 +49,11 @@ public class EnemyBehavior : MonoBehaviour
 
     void Update()
     {
+        Vector3 playerLookDirection = GameManager.instance.player.transform.position - transform.position;
+        playerLookDirection.y = 0;
+
+        transform.rotation = Quaternion.LookRotation(playerLookDirection);
+
         if (startMoving && !navObj.enabled)
         {
             nav.enabled = true;
@@ -61,17 +70,26 @@ public class EnemyBehavior : MonoBehaviour
                 isAttacking = true;
             }
         }
-
-        if (nav.pathStatus != NavMeshPathStatus.PathComplete)
+        
+        if (getCloser)
         {
-            nav.enabled = false;
-            navObj.enabled = true;
+            foreach (var enemy in GameManager.instance.enemies)
+            {
+                if (Vector3.Distance(transform.position, enemy.transform.position) < attackDistance && enemy.navObj.enabled && enemy.isAttacking)
+                {
+                    nav.enabled = false;
+                    navObj.enabled = true;
+                    getCloser = false;
+                    stopMoving = true;
+                }
+            }
+            
         }
 
-        Vector3 playerLookRotation = GameManager.instance.player.transform.position - transform.position;
-        playerLookRotation.y = 0;
-
-        transform.rotation = Quaternion.LookRotation(playerLookRotation);
+        if (nav.pathStatus != NavMeshPathStatus.PathComplete && !getCloser && !stopMoving)
+        {
+            getCloser = true;
+        }
     }
 
     void OnDestroy()
@@ -84,6 +102,7 @@ public class EnemyBehavior : MonoBehaviour
             {
                 enemy.navObj.enabled = false;
                 enemy.startMoving = true;
+                enemy.stopMoving = false;
             }
         }
     }
